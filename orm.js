@@ -314,7 +314,7 @@ class Controller extends Element {
 }
 
 const SNAKE_SIZE = 32;
-const container = new GameContainer(document.getElementById('root'), 960, 960, 32);
+const container = new GameContainer(document.getElementById('root'), 800, 800, 32);
 container.setFrameRate(8);
 container.add(new Background());
 
