@@ -1,6 +1,11 @@
 class CanvasEngine extends Engine {
     constructor(canvas) {
         super();
+        if (canvas == null) {
+            canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+        }
+
         this.canvas = canvas;
     }
 

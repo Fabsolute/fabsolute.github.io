@@ -7,10 +7,14 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>ORM</title>
     <script src="orm.js"></script>
-    <script src="engine.js"></script>
+    <script src="canvas-engine.js"></script>
+    <script src="html-element-engine.js"></script>
 </head>
 <body>
-<canvas id="root"></canvas>
+<div id="buttons">
+    <button onclick="start('canvas')">Start CanvasEngine</button>
+    <button onclick="start('html')">Start HtmlElementEngine</button>
+</div>
 
 <script>
     const SNAKE_SIZE = 32;
@@ -23,7 +27,15 @@
 
     container.add(new Controller(snake)).add(new Food());
 
-    container.initialize(new CanvasEngine(document.getElementById("root")));
+    function start(type) {
+        if (type === 'canvas') {
+            container.initialize(new CanvasEngine());
+        } else if (type === 'html') {
+            container.initialize(new HtmlElementEngine());
+        }
+
+        document.getElementById('buttons').remove();
+    }
 </script>
 </body>
 </html>
