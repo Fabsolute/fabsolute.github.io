@@ -1,29 +1,29 @@
 class GameContainer {
-    constructor(canvas, width, height, snakeSize) {
-        this.canvas = canvas;
+    constructor(width, height, snakeSize) {
         this.width = width;
         this.height = height;
         this.snakeSize = snakeSize;
-        this.initializeCanvas();
         this.children = [];
         this.time = Date.now();
         this.run = this.run.bind(this);
-        this.initializeEvents();
         this.keys = {};
         this.setFrameRate(60);
-    }
-
-    initializeCanvas() {
         this.gardenWidth = this.width / this.snakeSize;
         this.gardenHeight = this.height / this.snakeSize;
-        this.canvas.setAttribute('width', this.width);
-        this.canvas.setAttribute('height', this.height);
-        this.context = this.canvas.getContext('2d');
+    }
+
+    initialize(engine) {
+        this.engine = engine;
+        this.engine.setWidth(this.width);
+        this.engine.setHeight(this.height);
+        this.engine.setRunner(this.run);
+        this.initializeEvents();
+
+        this.engine.start();
     }
 
     run() {
         this.update();
-        requestAnimationFrame(this.run);
         const dt = (Date.now() - this.time) / 1000;
         if (dt > this.requiredDT) {
             this.time = Date.now();
@@ -47,7 +47,7 @@ class GameContainer {
 
     draw() {
         for (const child of this.children) {
-            child.draw?.(this.context);
+            child.draw?.(this.engine);
         }
     }
 
@@ -70,12 +70,12 @@ class GameContainer {
     }
 
     initializeEvents() {
-        window.addEventListener('keydown', event => {
-            this.keys[event.key] = true;
+        this.engine.onKeyDown((key) => {
+            this.keys[key] = true;
         });
 
-        window.addEventListener('keyup', event => {
-            this.keys[event.key] = false;
+        this.engine.onKeyUp((key) => {
+            this.keys[key] = false;
         });
     }
 }
@@ -96,11 +96,10 @@ class Element {
 }
 
 class Background extends Element {
-    draw(context) {
-        context.beginPath();
-        context.fillStyle = "aliceblue";
-        context.rect(this.x, this.y, this.parent.width, this.parent.height);
-        context.fill();
+    draw(engine) {
+        engine.drawRect(this.x, this.y, this.parent.width, this.parent.height, {
+            color: "aliceblue",
+        });
     }
 }
 
@@ -112,14 +111,21 @@ class RectElement extends Element {
         this.radius = radius;
     }
 
-    draw(context) {
-        context.beginPath();
-        context.strokeWidth = 4;
-        context.strokeStyle = `hsl(${this.color}, ${this.saturation}%, 38%)`
-        context.fillStyle = `hsl(${this.color}, ${this.saturation}%, 49%)`;
-        context.roundRect(this.x, this.y, this.parent.snakeSize, this.parent.snakeSize, this.radius);
-        context.fill();
-        context.stroke();
+    draw(engine) {
+        engine.drawRect(
+            this.x,
+            this.y,
+            this.parent.snakeSize,
+            this.parent.snakeSize,
+            {
+                stroke: {
+                    width: 4,
+                    color: `hsl(${this.color}, ${this.saturation}%, 38%)`,
+                },
+                color: `hsl(${this.color}, ${this.saturation}%, 49%)`,
+                radius: this.radius,
+            },
+        );
     }
 
     collided(x, y, width, height) {
@@ -218,12 +224,12 @@ class Snake extends SnakeBody {
 
     update() {
         if (this.lastDirection === 'up' || this.lastDirection === 'down') {
-            if (this.keyPressed('ArrowLeft')) {
+            if (this.keyPressed('left')) {
                 this.direction = 'left';
                 return;
             }
 
-            if (this.keyPressed('ArrowRight')) {
+            if (this.keyPressed('right')) {
                 this.direction = 'right';
                 return;
             }
@@ -233,12 +239,12 @@ class Snake extends SnakeBody {
             return;
         }
 
-        if (this.keyPressed('ArrowUp')) {
+        if (this.keyPressed('up')) {
             this.direction = 'up';
             return;
         }
 
-        if (this.keyPressed('ArrowDown')) {
+        if (this.keyPressed('down')) {
             this.direction = 'down';
             return;
         }
@@ -280,6 +286,10 @@ class Controller extends Element {
     }
 
     postDeltaUpdate() {
+        if (this.snake.isDead) {
+            return;
+        }
+
         let child = this.snake.child;
         while (child != null) {
             if (this.snake.collided(child.x, child.y, this.parent.snakeSize, this.parent.snakeSize)) {
@@ -313,16 +323,39 @@ class Controller extends Element {
     }
 }
 
-const SNAKE_SIZE = 32;
-const container = new GameContainer(document.getElementById('root'), 800, 800, 32);
-container.setFrameRate(8);
-container.add(new Background());
+class Engine {
+    onNextFrame(fn) {
+        throw new Error('not implemented');
+    }
 
-const snake = container.add(new Snake(SNAKE_SIZE * 2));
-snake.add(new SnakeBody(SNAKE_SIZE))
-    .add(new SnakeBody());
+    setWidth(width) {
+        this.width = width;
+    }
 
-container.add(new Controller(snake))
-    .add(new Food());
+    setHeight(height) {
+        this.height = height;
+    }
 
-container.run();
+    setRunner(runner) {
+        this.runner = runner;
+    }
+
+    onKeyDown(fn) {
+        this.onKeyDownCallback = fn;
+    }
+
+    onKeyUp(fn) {
+        this.onKeyUpCallback = fn;
+    }
+
+    start() {
+        this.run = this.run.bind(this);
+        this.run();
+    }
+
+    run() {
+        this.runner();
+
+        this.onNextFrame(this.run);
+    }
+}
